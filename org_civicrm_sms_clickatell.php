@@ -33,7 +33,7 @@
  *
  */
 class org_civicrm_sms_clickatell extends CRM_SMS_Provider {
-  
+
   CONST MAX_SMS_CHAR = 459;
   /**
    * api type to use to send a message
@@ -185,7 +185,7 @@ class org_civicrm_sms_clickatell extends CRM_SMS_Provider {
     $url = $this->_providerInfo['api_url'] . "/http/auth";
 
     $postDataArray = array(
-      'user'     => $this->_providerInfo['username'],
+      'user'     => $this->_providerInfo['username'], 
       'password' => $this->_providerInfo['password'],
       'api_id'    => $this->_providerInfo['api_params']['api_id']
     );
@@ -302,19 +302,24 @@ class org_civicrm_sms_clickatell extends CRM_SMS_Provider {
       else {
         $postData = $this->urlEncode($postDataArray);
         $response = $this->curl($url, $postData);
+        CRM_Core_Session::setStatus(ts($response), ts('Rsponse'), 'error'); 
       }
 
-      if ($response['error']) {
+      if (isset($response['error'])) {
         $errorMessage = $response['error'];
         CRM_Core_Session::setStatus(ts($errorMessage), ts('Sending SMS Error'), 'error');
         // TODO: Should add a failed activity instead.
         CRM_Core_Error::debug_log_message($response . " - for phone: {$postDataArray['to']}");
         return;
       } else {
-        $data = $response['messages'][0];
-
-        $this->createActivity($data->apiMessageId, $message, $header, $jobID, $userID);
-        return $data->apiMessageId;
+     
+      
+        $data = $response;
+      
+       $sid = $data;
+        
+        $this->createActivity($sid, $message, $header, $jobID, $userID);
+        return $sid;
       }
 
     }
@@ -434,7 +439,7 @@ class org_civicrm_sms_clickatell extends CRM_SMS_Provider {
     $like      = "";
     $fromPhone = $this->retrieve('from', 'String');
     $fromPhone = $this->formatPhone($this->stripPhone($fromPhone), $like, "like");
-    
+
     $body = $this->retrieve('text', 'String');
     $charset = $this->retrieve('charset', 'String');
     if ($charset != 'UTF-8') {
@@ -458,7 +463,7 @@ class org_civicrm_sms_clickatell extends CRM_SMS_Provider {
    * @access	private
    */
   function curl($url, $postData) {
-	  
+
     // JS 25042018 - If user uses the url "https://api.clickatell.com/" in CiviCRM SMS provider Settings
     if ($this->_providerInfo['api_url'] == "https://api.clickatell.com") {
       //Url for Old Credentials
@@ -474,7 +479,7 @@ class org_civicrm_sms_clickatell extends CRM_SMS_Provider {
       // include apiKey in the params
       $params = $postData . '&apiKey=' . $apiKey;
       $chUrl = $url . '?' . $params;
-    }  
+    }
 
     curl_setopt($this->_ch, CURLOPT_URL, $chUrl);
     curl_setopt($this->_ch, CURLOPT_SSL_VERIFYHOST, Civi::settings()->get('verifySSL') ? 2 : 0);
@@ -491,9 +496,11 @@ class org_civicrm_sms_clickatell extends CRM_SMS_Provider {
       CRM_Core_Session::setStatus(ts($erroMessage), ts('API Error'), 'error');
     }
 
-    $result = json_decode($responseData);
+$rest = substr($responseData, 3); 
+drupal_set_message(t($rest), 'status');
+    $result = json_decode($rest);
 
-    return (array)$result;
+    return $result;
   }
 }
 
